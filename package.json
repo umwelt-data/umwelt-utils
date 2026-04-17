@@ -1,0 +1,46 @@
+{
+  "name": "@umwelt-data/umwelt-utils",
+  "version": "0.1.0",
+  "description": "Shared utilities for the Olli and Umwelt projects. Includes a Vega-Lite bridge that syncs an Olli runtime with a VL view.",
+  "license": "BSD-3-Clause",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/umwelt-data/umwelt-utils.git"
+  },
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./vl-bridge": {
+      "types": "./dist/vl-bridge/index.d.ts",
+      "import": "./dist/vl-bridge/index.js",
+      "require": "./dist/vl-bridge/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prepublishOnly": "pnpm run typecheck && pnpm run test && pnpm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "tsup": "^8.0.2",
+    "typescript": "^5.4.0",
+    "vitest": "^1.4.0"
+  },
+  "packageManager": "pnpm@9.0.0"
+}

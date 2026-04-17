@@ -1,0 +1,100 @@
+import { describe, expect, it, vi } from 'vitest';
+import {
+  connectOlliToVegaLite,
+  type OlliHandleLike,
+  type Selection,
+  type VegaViewLike,
+} from '../src/vl-bridge/index.js';
+
+function makeFakeHandle(initial: Selection) {
+  let current = initial;
+  const listeners = new Set<(s: Selection) => void>();
+  const handle: OlliHandleLike = {
+    getSelection: () => current,
+    onSelectionChange: (cb) => {
+      listeners.add(cb);
+      return () => listeners.delete(cb);
+    },
+  };
+  const emit = (s: Selection) => {
+    current = s;
+    for (const l of listeners) l(s);
+  };
+  return { handle, emit, listenerCount: () => listeners.size };
+}
+
+function makeFakeView() {
+  const calls: { name: string; values: unknown }[] = [];
+  const view: VegaViewLike = {
+    data: (name, values) => {
+      calls.push({ name, values });
+      return view;
+    },
+    run: () => view,
+  };
+  return { view, calls };
+}
+
+describe('connectOlliToVegaLite', () => {
+  it('pushes initial selection on connect', () => {
+    const { handle } = makeFakeHandle({ field: 'a', equal: 1 });
+    const { view, calls } = makeFakeView();
+    connectOlliToVegaLite(handle, view);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.name).toBe('external_state_store');
+    const values = calls[0]!.values as unknown[];
+    expect(values).toHaveLength(1);
+    expect((values[0] as { fields: { field: string }[] }).fields[0]!.field).toBe('a');
+  });
+
+  it('pushes empty array for empty selection', () => {
+    const { handle } = makeFakeHandle({ and: [] });
+    const { view, calls } = makeFakeView();
+    connectOlliToVegaLite(handle, view);
+    expect(calls[0]!.values).toEqual([]);
+  });
+
+  it('pushes on subsequent selection changes', () => {
+    const { handle, emit } = makeFakeHandle({ and: [] });
+    const { view, calls } = makeFakeView();
+    connectOlliToVegaLite(handle, view);
+    emit({ field: 'x', equal: 42 });
+    expect(calls).toHaveLength(2);
+    const values = calls[1]!.values as unknown[];
+    expect((values[0] as { fields: { field: string }[] }).fields[0]!.field).toBe('x');
+  });
+
+  it('dispose stops future pushes', () => {
+    const { handle, emit, listenerCount } = makeFakeHandle({ and: [] });
+    const { view, calls } = makeFakeView();
+    const dispose = connectOlliToVegaLite(handle, view);
+    expect(listenerCount()).toBe(1);
+    dispose();
+    expect(listenerCount()).toBe(0);
+    emit({ field: 'x', equal: 1 });
+    expect(calls).toHaveLength(1);
+  });
+
+  it('honors custom storeName', () => {
+    const { handle } = makeFakeHandle({ field: 'a', equal: 1 });
+    const { view, calls } = makeFakeView();
+    connectOlliToVegaLite(handle, view, { storeName: 'custom_store' });
+    expect(calls[0]!.name).toBe('custom_store');
+  });
+
+  it('calls onError if view.data throws', () => {
+    const { handle, emit } = makeFakeHandle({ and: [] });
+    const throwing: VegaViewLike = {
+      data: () => {
+        throw new Error('boom');
+      },
+      run: () => throwing,
+    };
+    const onError = vi.fn();
+    connectOlliToVegaLite(handle, throwing, { onError });
+    // initial push errored
+    expect(onError).toHaveBeenCalledTimes(1);
+    emit({ field: 'x', equal: 1 });
+    expect(onError).toHaveBeenCalledTimes(2);
+  });
+});
