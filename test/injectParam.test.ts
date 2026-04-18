@@ -82,4 +82,84 @@ describe('withExternalStateParam', () => {
     const out = withExternalStateParam(spec);
     expect(findExternalStateParam((out as { params?: unknown[] }).params)).toBeDefined();
   });
+
+  it('injects conditional opacity on a unit spec', () => {
+    const spec = {
+      mark: 'bar',
+      encoding: { x: { field: 'a', type: 'quantitative' } },
+    };
+    const out = withExternalStateParam(spec) as {
+      encoding: { opacity: { condition: { param: string; value: number }; value: number } };
+    };
+    expect(out.encoding.opacity).toEqual({
+      condition: { param: 'external_state', value: 1 },
+      value: 0.3,
+    });
+  });
+
+  it('preserves existing opacity as the matched branch of the condition', () => {
+    const spec = {
+      mark: 'bar',
+      encoding: {
+        x: { field: 'a', type: 'quantitative' },
+        opacity: { field: 'o', type: 'quantitative' },
+      },
+    };
+    const out = withExternalStateParam(spec) as {
+      encoding: {
+        opacity: {
+          condition: { param: string; field: string; type: string };
+          value: number;
+        };
+      };
+    };
+    expect(out.encoding.opacity.condition).toEqual({
+      param: 'external_state',
+      field: 'o',
+      type: 'quantitative',
+    });
+    expect(out.encoding.opacity.value).toBe(0.3);
+  });
+
+  it('is idempotent for the conditional opacity', () => {
+    const spec = { mark: 'bar', encoding: { x: { field: 'a' } } };
+    const once = withExternalStateParam(spec);
+    const twice = withExternalStateParam(once);
+    expect(twice).toEqual(once);
+  });
+
+  it('injects conditional opacity into each layer', () => {
+    const spec = {
+      layer: [
+        { mark: 'bar', encoding: { x: { field: 'a' } } },
+        { mark: 'line', encoding: { x: { field: 'a' } } },
+      ],
+    };
+    const out = withExternalStateParam(spec) as { layer: Array<{ encoding: { opacity: unknown } }> };
+    for (const unit of out.layer) {
+      expect((unit.encoding.opacity as { condition: { param: string } }).condition.param).toBe('external_state');
+    }
+  });
+
+  it('injects conditional opacity into hconcat children', () => {
+    const spec = {
+      hconcat: [
+        { mark: 'bar', encoding: { x: { field: 'a' } } },
+        { mark: 'line', encoding: { x: { field: 'a' } } },
+      ],
+    };
+    const out = withExternalStateParam(spec) as { hconcat: Array<{ encoding: { opacity: unknown } }> };
+    for (const unit of out.hconcat) {
+      expect((unit.encoding.opacity as { condition: { param: string } }).condition.param).toBe('external_state');
+    }
+  });
+
+  it('injects conditional opacity into the inner spec of a faceted chart', () => {
+    const spec = {
+      facet: { field: 'category', type: 'nominal' },
+      spec: { mark: 'bar', encoding: { x: { field: 'a' } } },
+    };
+    const out = withExternalStateParam(spec) as { spec: { encoding: { opacity: unknown } } };
+    expect((out.spec.encoding.opacity as { condition: { param: string } }).condition.param).toBe('external_state');
+  });
 });

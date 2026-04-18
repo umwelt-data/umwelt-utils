@@ -97,4 +97,80 @@ describe('connectOlliToVegaLite', () => {
     emit({ field: 'x', equal: 1 });
     expect(onError).toHaveBeenCalledTimes(2);
   });
+
+  describe('focus-driven highlighting', () => {
+    function makeFocusHandle(initialNavId: string, predicates: Record<string, Selection>) {
+      let focused = initialNavId;
+      const listeners = new Set<(id: string) => void>();
+      const selectionListeners = new Set<(s: Selection) => void>();
+      const handle: OlliHandleLike = {
+        getSelection: () => ({ and: [] }),
+        onSelectionChange: (cb) => {
+          selectionListeners.add(cb);
+          return () => selectionListeners.delete(cb);
+        },
+        getFocusedNavId: () => focused,
+        fullPredicate: (id) => predicates[id] ?? { and: [] },
+        onFocusChange: (cb) => {
+          listeners.add(cb);
+          return () => listeners.delete(cb);
+        },
+      };
+      const focus = (id: string) => {
+        focused = id;
+        for (const l of listeners) l(id);
+      };
+      return { handle, focus, focusListenerCount: () => listeners.size };
+    }
+
+    it('auto mode uses focus when handle exposes fullPredicate + onFocusChange', () => {
+      const { handle, focus } = makeFocusHandle('root', {
+        root: { and: [] },
+        'root/B': { field: 'category', equal: 'B' },
+      });
+      const { view, calls } = makeFakeView();
+      connectOlliToVegaLite(handle, view);
+      // initial push: root → empty
+      expect(calls[0]!.values).toEqual([]);
+      focus('root/B');
+      expect(calls).toHaveLength(2);
+      const values = calls[1]!.values as unknown[];
+      expect((values[0] as { fields: { field: string }[] }).fields[0]!.field).toBe('category');
+    });
+
+    it('auto mode falls back to selection when focus API is missing', () => {
+      const { handle, emit } = makeFakeHandle({ and: [] });
+      const { view, calls } = makeFakeView();
+      connectOlliToVegaLite(handle, view);
+      emit({ field: 'x', equal: 1 });
+      expect(calls).toHaveLength(2);
+    });
+
+    it('source: selection forces selection subscription even with focus API present', () => {
+      const { handle, focus, focusListenerCount } = makeFocusHandle('root', {
+        root: { and: [] },
+        'root/B': { field: 'category', equal: 'B' },
+      });
+      const { view, calls } = makeFakeView();
+      connectOlliToVegaLite(handle, view, { source: 'selection' });
+      focus('root/B');
+      // focus change should not push because we forced selection mode
+      expect(calls).toHaveLength(1);
+      expect(focusListenerCount()).toBe(0);
+    });
+
+    it('dispose unsubscribes the focus listener', () => {
+      const { handle, focus, focusListenerCount } = makeFocusHandle('root', {
+        root: { and: [] },
+        'root/B': { field: 'category', equal: 'B' },
+      });
+      const { view, calls } = makeFakeView();
+      const dispose = connectOlliToVegaLite(handle, view);
+      expect(focusListenerCount()).toBe(1);
+      dispose();
+      expect(focusListenerCount()).toBe(0);
+      focus('root/B');
+      expect(calls).toHaveLength(1);
+    });
+  });
 });

@@ -8,6 +8,12 @@ import type { Selection } from './predicateTypes.js';
 export interface OlliHandleLike {
   getSelection(): Selection;
   onSelectionChange(cb: (selection: Selection) => void): () => void;
+  /** Optional — when present, the bridge uses focus-drives-highlight. */
+  getFocusedNavId?(): string;
+  /** Optional — used to compute a predicate for a focused node. */
+  fullPredicate?(navId: string): Selection;
+  /** Optional — called on focus change; preferred when `fullPredicate` is available. */
+  onFocusChange?(cb: (navId: string) => void): () => void;
 }
 
 export interface VegaViewLike {
@@ -26,11 +32,28 @@ export interface BridgeOptions {
    * Called when writing to the view throws. Defaults to `console.error`.
    */
   onError?: (err: unknown) => void;
+
+  /**
+   * Selection source. Default is `'auto'`: focus-drives-highlight when the
+   * handle exposes `fullPredicate` + `onFocusChange`, otherwise the selection
+   * signal. Set to `'selection'` to force reading `getSelection()` /
+   * subscribing to `onSelectionChange`.
+   */
+  source?: 'auto' | 'selection' | 'focus';
 }
 
 /**
  * Wire an Olli runtime to a compiled Vega-Lite view so that the user's
- * current selection in the Olli tree highlights the matching data on the chart.
+ * current position in the Olli tree highlights the matching data on the chart.
+ *
+ * By default (source: 'auto'), the bridge listens to focus changes on the
+ * handle and maps the focused nav node to its ancestor predicate via
+ * `handle.fullPredicate(navId)`. This matches the umwelt UX where navigating
+ * the tree auto-highlights the corresponding subset.
+ *
+ * When the handle does not expose `fullPredicate`, the bridge falls back to
+ * `onSelectionChange` — only explicit `setSelection()` calls will drive
+ * highlighting in that mode.
  *
  * Usage:
  *
@@ -51,6 +74,7 @@ export function connectOlliToVegaLite(
 ): () => void {
   const storeName = options.storeName ?? EXTERNAL_STATE_STORE;
   const onError = options.onError ?? ((e: unknown) => console.error('[umwelt-utils vl-bridge]', e));
+  const source = options.source ?? 'auto';
 
   const push = (selection: Selection) => {
     try {
@@ -60,6 +84,21 @@ export function connectOlliToVegaLite(
       onError(e);
     }
   };
+
+  const canFocus =
+    typeof handle.fullPredicate === 'function' &&
+    typeof handle.onFocusChange === 'function' &&
+    typeof handle.getFocusedNavId === 'function';
+
+  if (source === 'focus' || (source === 'auto' && canFocus)) {
+    if (!canFocus) {
+      onError(new Error('bridge: source="focus" requires fullPredicate + onFocusChange + getFocusedNavId on the handle'));
+      return () => {};
+    }
+    const fullPredicate = handle.fullPredicate!;
+    push(fullPredicate(handle.getFocusedNavId!()));
+    return handle.onFocusChange!((navId) => push(fullPredicate(navId)));
+  }
 
   push(handle.getSelection());
   return handle.onSelectionChange(push);
