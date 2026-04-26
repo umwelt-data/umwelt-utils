@@ -46,15 +46,41 @@ export function withExternalStateParam<T extends Record<string, unknown>>(spec: 
 function attachParam(spec: CompoundSpec): CompoundSpec {
   if (!spec || typeof spec !== 'object') return spec;
 
+  if (containsExternalStateParam(spec)) return spec;
+
   if ('facet' in spec && spec.spec) {
     return { ...spec, spec: attachParam(spec.spec) };
   }
 
-  const existing = Array.isArray(spec.params) ? spec.params : [];
-  if (hasExternalStateParam(existing)) return spec;
+  // Multi-view specs: attach the param to the first child unit rather than
+  // the outer wrapper. A top-level interval param in a layered or concat
+  // spec gets pushed down to every child scope by the VL compiler, which
+  // produces duplicate signal names (external_state_x, external_state_y).
+  // Anchoring it to a single leaf avoids the collision while keeping the
+  // store name stable.
+  for (const key of ['layer', 'concat', 'hconcat', 'vconcat'] as const) {
+    const arr = spec[key];
+    if (Array.isArray(arr) && arr.length > 0) {
+      const updated = arr.slice();
+      updated[0] = attachParam(arr[0] as CompoundSpec);
+      return { ...spec, [key]: updated };
+    }
+  }
 
+  const existing = Array.isArray(spec.params) ? spec.params : [];
   const param = { name: EXTERNAL_STATE_PARAM, select: 'interval' };
   return { ...spec, params: [...existing, param] };
+}
+
+function containsExternalStateParam(spec: CompoundSpec): boolean {
+  if (!spec || typeof spec !== 'object') return false;
+  if (Array.isArray(spec.params) && hasExternalStateParam(spec.params)) return true;
+  if (spec.spec && containsExternalStateParam(spec.spec)) return true;
+  for (const key of ['layer', 'concat', 'hconcat', 'vconcat'] as const) {
+    const arr = spec[key];
+    if (Array.isArray(arr) && arr.some((s) => containsExternalStateParam(s))) return true;
+  }
+  return false;
 }
 
 function attachConditionalOpacity(spec: CompoundSpec): CompoundSpec {

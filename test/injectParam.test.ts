@@ -46,7 +46,7 @@ describe('withExternalStateParam', () => {
     expect(JSON.stringify(spec)).toBe(before);
   });
 
-  it('adds param to a layered spec at the top level', () => {
+  it('adds param to the first layer rather than the outer spec', () => {
     const spec = {
       data: { values: [] },
       layer: [
@@ -54,8 +54,13 @@ describe('withExternalStateParam', () => {
         { mark: 'line', encoding: {} },
       ],
     };
-    const out = withExternalStateParam(spec);
-    expect(findExternalStateParam((out as { params?: unknown[] }).params)).toBeDefined();
+    const out = withExternalStateParam(spec) as {
+      params?: unknown[];
+      layer: Array<{ params?: unknown[] }>;
+    };
+    expect(findExternalStateParam(out.params)).toBeUndefined();
+    expect(findExternalStateParam(out.layer[0].params)).toBeDefined();
+    expect(findExternalStateParam(out.layer[1].params)).toBeUndefined();
   });
 
   it('adds param to inner spec for faceted specs', () => {
@@ -72,15 +77,20 @@ describe('withExternalStateParam', () => {
     expect(findExternalStateParam(out.spec.params)).toBeDefined();
   });
 
-  it('adds param to a hconcat spec at the top level', () => {
+  it('adds param to the first hconcat child rather than the outer spec', () => {
     const spec = {
       hconcat: [
         { mark: 'bar', encoding: {} },
         { mark: 'line', encoding: {} },
       ],
     };
-    const out = withExternalStateParam(spec);
-    expect(findExternalStateParam((out as { params?: unknown[] }).params)).toBeDefined();
+    const out = withExternalStateParam(spec) as {
+      params?: unknown[];
+      hconcat: Array<{ params?: unknown[] }>;
+    };
+    expect(findExternalStateParam(out.params)).toBeUndefined();
+    expect(findExternalStateParam(out.hconcat[0].params)).toBeDefined();
+    expect(findExternalStateParam(out.hconcat[1].params)).toBeUndefined();
   });
 
   it('injects conditional opacity on a unit spec', () => {

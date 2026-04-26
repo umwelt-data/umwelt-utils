@@ -21,6 +21,11 @@
       "types": "./dist/vl-bridge/index.d.ts",
       "import": "./dist/vl-bridge/index.js",
       "require": "./dist/vl-bridge/index.cjs"
+    },
+    "./bluefish-bridge": {
+      "types": "./dist/bluefish-bridge/index.d.ts",
+      "import": "./dist/bluefish-bridge/index.js",
+      "require": "./dist/bluefish-bridge/index.cjs"
     }
   },
   "files": [
