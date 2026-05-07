@@ -41,6 +41,9 @@
     "test:watch": "vitest",
     "prepublishOnly": "pnpm run typecheck && pnpm run test && pnpm run build"
   },
+  "dependencies": {
+    "bluefish-js": "link:../bluefish/packages/bluefish-js"
+  },
   "devDependencies": {
     "@types/node": "^20.11.0",
     "tsup": "^8.0.2",
