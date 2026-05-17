@@ -26,6 +26,11 @@
       "types": "./dist/bluefish-bridge/index.d.ts",
       "import": "./dist/bluefish-bridge/index.js",
       "require": "./dist/bluefish-bridge/index.cjs"
+    },
+    "./data": {
+      "types": "./dist/data/index.d.ts",
+      "import": "./dist/data/index.js",
+      "require": "./dist/data/index.cjs"
     }
   },
   "files": [
@@ -41,8 +46,11 @@
     "test:watch": "vitest",
     "prepublishOnly": "pnpm run typecheck && pnpm run test && pnpm run build"
   },
-  "dependencies": {
-    "bluefish-js": "link:../bluefish/packages/bluefish-js"
+  "peerDependencies": {
+    "bluefish-js": "*"
+  },
+  "peerDependenciesMeta": {
+    "bluefish-js": { "optional": true }
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
