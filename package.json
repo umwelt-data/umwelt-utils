@@ -31,6 +31,11 @@
       "types": "./dist/data/index.d.ts",
       "import": "./dist/data/index.js",
       "require": "./dist/data/index.cjs"
+    },
+    "./vega": {
+      "types": "./dist/vega/index.d.ts",
+      "import": "./dist/vega/index.js",
+      "require": "./dist/vega/index.cjs"
     }
   },
   "files": [
