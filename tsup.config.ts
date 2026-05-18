@@ -9,5 +9,4 @@ export default defineConfig({
   splitting: false,
   treeshake: true,
   target: 'es2020',
-  external: ['bluefish-js'],
 });

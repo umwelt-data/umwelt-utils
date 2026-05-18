@@ -42,4 +42,3 @@ export function createBluefishBridge(options: BluefishBridgeOptions): {
 }
 
 export { resolveIds, type SelectionLike } from './predicate.js';
-export { mountBluefish, type BluefishMountResult } from './mount.js';

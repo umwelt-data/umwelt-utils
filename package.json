@@ -43,12 +43,6 @@
     "test:watch": "vitest",
     "prepublishOnly": "pnpm run typecheck && pnpm run test && pnpm run build"
   },
-  "peerDependencies": {
-    "bluefish-js": "*"
-  },
-  "peerDependenciesMeta": {
-    "bluefish-js": { "optional": true }
-  },
   "devDependencies": {
     "@types/node": "^20.11.0",
     "tsup": "^8.0.2",
