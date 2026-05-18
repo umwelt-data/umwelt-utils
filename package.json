@@ -8,15 +8,7 @@
     "url": "https://github.com/umwelt-data/umwelt-utils.git"
   },
   "type": "module",
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
-    },
     "./vl-bridge": {
       "types": "./dist/vl-bridge/index.d.ts",
       "import": "./dist/vl-bridge/index.js",
