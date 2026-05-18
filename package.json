@@ -28,6 +28,11 @@
       "types": "./dist/vega/index.d.ts",
       "import": "./dist/vega/index.js",
       "require": "./dist/vega/index.cjs"
+    },
+    "./predicate": {
+      "types": "./dist/predicate/index.d.ts",
+      "import": "./dist/predicate/index.js",
+      "require": "./dist/predicate/index.cjs"
     }
   },
   "files": [

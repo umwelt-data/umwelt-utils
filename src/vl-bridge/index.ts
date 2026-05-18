@@ -47,4 +47,4 @@ export type {
   LogicalComposition,
   Selection,
   FieldValue,
-} from './predicateTypes.js';
+} from '../predicate/types.js';

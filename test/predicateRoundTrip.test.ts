@@ -37,13 +37,23 @@ describe('predicate <-> selection-store round-trip', () => {
     expect(roundTrip(p)).toEqual(p);
   });
 
-  it('range inclusive (numeric)', () => {
-    const p: FieldPredicate = { field: 'year', range: [1990, 2000], inclusive: true };
+  it('range fully inclusive [lo, hi]', () => {
+    const p: FieldPredicate = { field: 'year', range: [1990, 2000], inclusiveLeft: true, inclusiveRight: true };
     expect(roundTrip(p)).toEqual(p);
   });
 
-  it('range right-exclusive (numeric)', () => {
-    const p: FieldPredicate = { field: 'year', range: [1990, 2000], inclusive: false };
+  it('range right-exclusive [lo, hi)', () => {
+    const p: FieldPredicate = { field: 'year', range: [1990, 2000], inclusiveLeft: true, inclusiveRight: false };
+    expect(roundTrip(p)).toEqual(p);
+  });
+
+  it('range left-exclusive (lo, hi]', () => {
+    const p: FieldPredicate = { field: 'year', range: [1990, 2000], inclusiveLeft: false, inclusiveRight: true };
+    expect(roundTrip(p)).toEqual(p);
+  });
+
+  it('range fully exclusive (lo, hi)', () => {
+    const p: FieldPredicate = { field: 'year', range: [1990, 2000], inclusiveLeft: false, inclusiveRight: false };
     expect(roundTrip(p)).toEqual(p);
   });
 
@@ -61,7 +71,7 @@ describe('predicate <-> selection-store round-trip', () => {
     const p: Selection = {
       and: [
         { field: 'country', equal: 'USA' },
-        { field: 'year', range: [1990, 2000], inclusive: true },
+        { field: 'year', range: [1990, 2000], inclusiveLeft: true, inclusiveRight: true },
       ],
     };
     expect(roundTrip(p)).toEqual(p);
@@ -95,17 +105,29 @@ describe('predicateToSelectionStore tuple shape', () => {
     expect(tuple!.values).toEqual([1, 5]);
   });
 
-  it('range predicate values are passed through as arrays', () => {
-    const p: FieldPredicate = { field: 'year', range: [1990, 2000], inclusive: true };
+  it('range inclusive values are passed through as arrays', () => {
+    const p: FieldPredicate = { field: 'year', range: [1990, 2000], inclusiveLeft: true, inclusiveRight: true };
     const tuple = predicateToSelectionStore(p);
     expect(tuple!.fields[0]).toEqual({ type: 'R', field: 'year' });
     expect(tuple!.values[0]).toEqual([1990, 2000]);
   });
 
-  it('inclusive: false range uses R-RE', () => {
-    const p: FieldPredicate = { field: 'y', range: [0, 10], inclusive: false };
+  it('right-exclusive range uses R-RE', () => {
+    const p: FieldPredicate = { field: 'y', range: [0, 10], inclusiveLeft: true, inclusiveRight: false };
     const tuple = predicateToSelectionStore(p);
     expect(tuple!.fields[0]!.type).toBe('R-RE');
+  });
+
+  it('left-exclusive range uses R-LE', () => {
+    const p: FieldPredicate = { field: 'y', range: [0, 10], inclusiveLeft: false, inclusiveRight: true };
+    const tuple = predicateToSelectionStore(p);
+    expect(tuple!.fields[0]!.type).toBe('R-LE');
+  });
+
+  it('fully exclusive range uses R-E', () => {
+    const p: FieldPredicate = { field: 'y', range: [0, 10], inclusiveLeft: false, inclusiveRight: false };
+    const tuple = predicateToSelectionStore(p);
+    expect(tuple!.fields[0]!.type).toBe('R-E');
   });
 
   it('or / not are skipped silently', () => {

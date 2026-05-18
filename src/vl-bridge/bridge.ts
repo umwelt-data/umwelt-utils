@@ -1,6 +1,6 @@
 import { predicateToSelectionStore } from './fromPredicate.js';
 import { EXTERNAL_STATE_STORE } from './injectParam.js';
-import type { Selection } from './predicateTypes.js';
+import type { Selection } from '../predicate/types.js';
 
 // Structural types — we only use a tiny surface of each.
 // Declared locally so the package has no runtime dependency on olli-js or vega.

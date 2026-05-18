@@ -6,7 +6,9 @@ import {
   TUPLE_PRED_LTE,
   TUPLE_PRED_ONE_OF,
   TUPLE_PRED_VALID,
+  TUPLE_RANGE_EXC,
   TUPLE_RANGE_INC,
+  TUPLE_RANGE_LE,
   TUPLE_RANGE_RE,
   type TupleType,
   type VlSelectionTuple,
@@ -19,7 +21,7 @@ import {
   isLogicalOr,
   type FieldPredicate,
   type Selection,
-} from './predicateTypes.js';
+} from '../predicate/types.js';
 
 function fieldPredicateToTupleType(p: FieldPredicate): TupleType {
   if ('equal' in p) return TUPLE_ENUM;
@@ -28,7 +30,12 @@ function fieldPredicateToTupleType(p: FieldPredicate): TupleType {
   if ('lte' in p) return TUPLE_PRED_LTE;
   if ('gte' in p) return TUPLE_PRED_GTE;
   if ('range' in p) {
-    return p.inclusive === false ? TUPLE_RANGE_RE : TUPLE_RANGE_INC;
+    const leftInc = p.inclusiveLeft ?? true;
+    const rightInc = p.inclusiveRight ?? true;
+    if (leftInc && rightInc) return TUPLE_RANGE_INC;
+    if (leftInc && !rightInc) return TUPLE_RANGE_RE;
+    if (!leftInc && rightInc) return TUPLE_RANGE_LE;
+    return TUPLE_RANGE_EXC;
   }
   if ('oneOf' in p) return TUPLE_PRED_ONE_OF;
   if ('valid' in p) return TUPLE_PRED_VALID;
@@ -83,7 +90,6 @@ function collect(predicate: Selection): { fields: VlSelectionTupleField[]; value
     return { fields, values };
   }
   if (isLogicalOr(predicate) || isLogicalNot(predicate)) {
-    // Not representable in VL's selection-store tuple format.
     return { fields: [], values: [] };
   }
   if (isFieldPredicate(predicate)) {

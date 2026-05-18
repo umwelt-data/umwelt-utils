@@ -14,7 +14,7 @@ import {
   type VlSelectionStore,
   type VlSelectionTupleField,
 } from './tupleTypes.js';
-import type { FieldPredicate, Selection } from './predicateTypes.js';
+import type { FieldPredicate, Selection } from '../predicate/types.js';
 
 function buildFieldPredicate(field: VlSelectionTupleField, value: unknown): FieldPredicate {
   const base = { field: field.field };
@@ -30,11 +30,13 @@ function buildFieldPredicate(field: VlSelectionTupleField, value: unknown): Fiel
     case TUPLE_PRED_GTE:
       return { ...base, gte: value } as FieldPredicate;
     case TUPLE_RANGE_INC:
-      return { ...base, range: value, inclusive: true } as FieldPredicate;
+      return { ...base, range: value, inclusiveLeft: true, inclusiveRight: true } as FieldPredicate;
     case TUPLE_RANGE_RE:
-    case TUPLE_RANGE_EXC:
+      return { ...base, range: value, inclusiveLeft: true, inclusiveRight: false } as FieldPredicate;
     case TUPLE_RANGE_LE:
-      return { ...base, range: value, inclusive: false } as FieldPredicate;
+      return { ...base, range: value, inclusiveLeft: false, inclusiveRight: true } as FieldPredicate;
+    case TUPLE_RANGE_EXC:
+      return { ...base, range: value, inclusiveLeft: false, inclusiveRight: false } as FieldPredicate;
     case TUPLE_PRED_ONE_OF:
       return { ...base, oneOf: value } as FieldPredicate;
     case TUPLE_PRED_VALID:
