@@ -40,7 +40,12 @@ interface CompoundSpec {
  */
 export function withExternalStateParam<T extends Record<string, unknown>>(spec: T): T {
   const withParam = attachParam(spec as CompoundSpec);
-  return attachConditionalOpacity(withParam) as T;
+  const withOpacity = attachConditionalOpacity(withParam);
+  return augmentMarksForHighlight(withOpacity) as T;
+}
+
+export function withPointMarks<T extends Record<string, unknown>>(spec: T): T {
+  return augmentMarksForHighlight(spec as CompoundSpec) as T;
 }
 
 function attachParam(spec: CompoundSpec): CompoundSpec {
@@ -130,4 +135,67 @@ function hasExternalStateParam(params: unknown[]): boolean {
   return params.some(
     (p) => typeof p === 'object' && p !== null && (p as { name?: unknown }).name === EXTERNAL_STATE_PARAM,
   );
+}
+
+function augmentMarksForHighlight(spec: CompoundSpec): CompoundSpec {
+  if (!spec || typeof spec !== 'object') return spec;
+
+  if (spec.mark && spec.encoding) {
+    return splitIntoLayerWithCircles(spec) ?? spec;
+  }
+
+  let next: CompoundSpec = spec;
+  if (spec.spec) {
+    next = { ...next, spec: augmentMarksForHighlight(spec.spec) };
+  }
+  for (const key of ['layer', 'concat', 'hconcat', 'vconcat'] as const) {
+    const arr = spec[key];
+    if (Array.isArray(arr)) {
+      next = { ...next, [key]: arr.map((s) => augmentMarksForHighlight(s)) };
+    }
+  }
+  return next;
+}
+
+function getMarkType(mark: unknown): string | undefined {
+  if (typeof mark === 'string') return mark;
+  if (mark && typeof mark === 'object') return (mark as { type?: string }).type;
+  return undefined;
+}
+
+function splitIntoLayerWithCircles(spec: CompoundSpec): CompoundSpec | null {
+  const type = getMarkType(spec.mark);
+  if (type !== 'line' && type !== 'area') return null;
+
+  const encoding = spec.encoding ?? {};
+  const { mark, encoding: _enc, params, ...rest } = spec as Record<string, unknown>;
+
+  // For area marks, replace per-datum opacity with an expression that checks
+  // whether the selection store has data — dims the entire area uniformly.
+  let markEncoding = encoding;
+  if (type === 'area') {
+    const { opacity: _opacity, ...encodingWithoutOpacity } = encoding;
+    markEncoding = {
+      ...encodingWithoutOpacity,
+      opacity: {
+        condition: { test: `length(data('${EXTERNAL_STATE_STORE}')) > 0`, value: 0.3 },
+        value: 1,
+      },
+    };
+  }
+
+  const circleOpacity = {
+    condition: { param: EXTERNAL_STATE_PARAM, empty: false, value: 1 },
+    value: 0,
+  };
+  const circleEncoding = { ...encoding, opacity: circleOpacity };
+
+  const markLayer: CompoundSpec = { mark, encoding: markEncoding } as CompoundSpec;
+  const circleLayer: CompoundSpec = { mark: 'circle', encoding: circleEncoding } as CompoundSpec;
+
+  if (params) {
+    (markLayer as Record<string, unknown>).params = params;
+  }
+
+  return { ...rest, layer: [markLayer, circleLayer] } as CompoundSpec;
 }

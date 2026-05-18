@@ -2,6 +2,7 @@ export { predicateToSelectionStore } from './fromPredicate.js';
 export { selectionStoreToSelection } from './toPredicate.js';
 export {
   withExternalStateParam,
+  withPointMarks,
   EXTERNAL_STATE_PARAM,
   EXTERNAL_STATE_STORE,
 } from './injectParam.js';

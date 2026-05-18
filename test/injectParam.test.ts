@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EXTERNAL_STATE_PARAM, withExternalStateParam } from '../src/vl-bridge/index.js';
+import { EXTERNAL_STATE_PARAM, withExternalStateParam, withPointMarks } from '../src/vl-bridge/index.js';
 
 function findExternalStateParam(params: unknown[] | undefined): unknown {
   if (!Array.isArray(params)) return undefined;
@@ -145,10 +145,11 @@ describe('withExternalStateParam', () => {
         { mark: 'line', encoding: { x: { field: 'a' } } },
       ],
     };
-    const out = withExternalStateParam(spec) as { layer: Array<{ encoding: { opacity: unknown } }> };
-    for (const unit of out.layer) {
-      expect((unit.encoding.opacity as { condition: { param: string } }).condition.param).toBe('external_state');
-    }
+    const out = withExternalStateParam(spec) as any;
+    // bar gets direct opacity
+    expect(out.layer[0].encoding.opacity.condition.param).toBe('external_state');
+    // line gets split into nested layer; the line sublayer has opacity
+    expect(out.layer[1].layer[0].encoding.opacity.condition.param).toBe('external_state');
   });
 
   it('injects conditional opacity into hconcat children', () => {
@@ -158,10 +159,9 @@ describe('withExternalStateParam', () => {
         { mark: 'line', encoding: { x: { field: 'a' } } },
       ],
     };
-    const out = withExternalStateParam(spec) as { hconcat: Array<{ encoding: { opacity: unknown } }> };
-    for (const unit of out.hconcat) {
-      expect((unit.encoding.opacity as { condition: { param: string } }).condition.param).toBe('external_state');
-    }
+    const out = withExternalStateParam(spec) as any;
+    expect(out.hconcat[0].encoding.opacity.condition.param).toBe('external_state');
+    expect(out.hconcat[1].layer[0].encoding.opacity.condition.param).toBe('external_state');
   });
 
   it('injects conditional opacity into the inner spec of a faceted chart', () => {
@@ -171,5 +171,113 @@ describe('withExternalStateParam', () => {
     };
     const out = withExternalStateParam(spec) as { spec: { encoding: { opacity: unknown } } };
     expect((out.spec.encoding.opacity as { condition: { param: string } }).condition.param).toBe('external_state');
+  });
+
+  it('splits line unit into layer with line + hidden circle overlay', () => {
+    const spec = { mark: 'line', encoding: { x: { field: 'a' } } };
+    const out = withExternalStateParam(spec) as any;
+    expect(out.layer).toHaveLength(2);
+    expect(out.layer[0].mark).toBe('line');
+    expect(out.layer[0].encoding.opacity.condition.param).toBe('external_state');
+    expect(out.layer[1].mark).toBe('circle');
+    expect(out.layer[1].encoding.opacity).toEqual({
+      condition: { param: 'external_state', empty: false, value: 1 },
+      value: 0,
+    });
+  });
+
+  it('splits area unit into layer with area (store-based opacity) + hidden circle overlay', () => {
+    const spec = { mark: 'area', encoding: { x: { field: 'a' } } };
+    const out = withExternalStateParam(spec) as any;
+    expect(out.layer).toHaveLength(2);
+    expect(out.layer[0].mark).toBe('area');
+    expect(out.layer[0].encoding.opacity).toEqual({
+      condition: { test: "length(data('external_state_store')) > 0", value: 0.3 },
+      value: 1,
+    });
+    expect(out.layer[1].mark).toBe('circle');
+    expect(out.layer[1].encoding.opacity).toEqual({
+      condition: { param: 'external_state', empty: false, value: 1 },
+      value: 0,
+    });
+  });
+
+  it('preserves line mark object properties in the line layer', () => {
+    const spec = { mark: { type: 'line', strokeWidth: 2 }, encoding: { x: { field: 'a' } } };
+    const out = withExternalStateParam(spec) as any;
+    expect(out.layer[0].mark).toEqual({ type: 'line', strokeWidth: 2 });
+  });
+
+  it('keeps the selection param on the mark layer', () => {
+    const spec = { mark: 'line', encoding: { x: { field: 'a' } } };
+    const out = withExternalStateParam(spec) as any;
+    expect(findExternalStateParam(out.layer[0].params)).toBeDefined();
+    expect(out.layer[1].params).toBeUndefined();
+  });
+
+  it('circle layer inherits encoding channels from the original unit', () => {
+    const spec = { mark: 'line', encoding: { x: { field: 'a' }, y: { field: 'b' }, color: { field: 'c' } } };
+    const out = withExternalStateParam(spec) as any;
+    expect(out.layer[1].encoding.x).toEqual({ field: 'a' });
+    expect(out.layer[1].encoding.y).toEqual({ field: 'b' });
+    expect(out.layer[1].encoding.color).toEqual({ field: 'c' });
+  });
+
+  it('does not modify bar or point marks', () => {
+    const barSpec = { mark: 'bar', encoding: { x: { field: 'a' } } };
+    const pointSpec = { mark: 'point', encoding: { x: { field: 'a' } } };
+    expect((withExternalStateParam(barSpec) as any).mark).toBe('bar');
+    expect((withExternalStateParam(pointSpec) as any).mark).toBe('point');
+  });
+
+  it('splits line marks within existing layers (nested layer)', () => {
+    const spec = {
+      layer: [
+        { mark: 'line', encoding: { x: { field: 'a' } } },
+        { mark: 'bar', encoding: { x: { field: 'a' } } },
+      ],
+    };
+    const out = withExternalStateParam(spec) as any;
+    expect(out.layer[0].layer).toHaveLength(2);
+    expect(out.layer[0].layer[0].mark).toBe('line');
+    expect(out.layer[0].layer[1].mark).toBe('circle');
+    expect(out.layer[1].mark).toBe('bar');
+  });
+
+  it('splits area marks within faceted specs', () => {
+    const spec = {
+      facet: { field: 'category', type: 'nominal' },
+      spec: { mark: 'area', encoding: { x: { field: 'a' } } },
+    };
+    const out = withExternalStateParam(spec) as any;
+    expect(out.spec.layer).toHaveLength(2);
+    expect(out.spec.layer[0].mark).toBe('area');
+    expect(out.spec.layer[1].mark).toBe('circle');
+  });
+
+  it('preserves data and other top-level properties on the outer spec', () => {
+    const spec = { mark: 'line', encoding: { x: { field: 'a' } }, data: { values: [{ a: 1 }] }, width: 400 };
+    const out = withExternalStateParam(spec) as any;
+    expect(out.data).toEqual({ values: [{ a: 1 }] });
+    expect(out.width).toBe(400);
+  });
+});
+
+describe('withPointMarks', () => {
+  it('splits line unit into layer with circle overlay (no params)', () => {
+    const spec = { mark: 'line', encoding: { x: { field: 'a' } } };
+    const out = withPointMarks(spec) as any;
+    expect(out.layer).toHaveLength(2);
+    expect(out.layer[0].mark).toBe('line');
+    expect(out.layer[1].mark).toBe('circle');
+    expect(out.layer[0].params).toBeUndefined();
+  });
+
+  it('splits area unit into layer with circle overlay', () => {
+    const spec = { mark: 'area', encoding: { x: { field: 'a' } } };
+    const out = withPointMarks(spec) as any;
+    expect(out.layer).toHaveLength(2);
+    expect(out.layer[0].mark).toBe('area');
+    expect(out.layer[1].mark).toBe('circle');
   });
 });
