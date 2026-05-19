@@ -1,52 +1,105 @@
+import { scaleLinear, scaleUtc } from 'd3-scale';
+import { extent } from 'd3-array';
+
 export interface AxisTicks {
   x?: any[];
   y?: any[];
 }
 
-export function getVegaAxisTicks(scene: any): AxisTicks | null {
-  const axisNodes = findNodeByRole(scene, 'axis');
-  if (!axisNodes.length) return null;
-
-  let xTicks: any[] | undefined;
-  let yTicks: any[] | undefined;
-
-  for (const axisNode of axisNodes) {
-    const axisView = axisNode.items?.[0];
-    if (!axisView) continue;
-
-    const orient: string | undefined = axisView.orient;
-    const isX = orient === 'bottom' || orient === 'top';
-
-    const tickGroup = axisView.items?.find((item: any) => item.role === 'axis-tick');
-    if (!tickGroup?.items?.length) continue;
-
-    const values = tickGroup.items.map((n: any) => n.datum?.value);
-
-    if (isX && !xTicks) {
-      xTicks = values;
-    } else if (!isX && !yTicks) {
-      yTicks = values;
-    }
-
-    if (xTicks && yTicks) break;
-  }
-
-  if (!xTicks && !yTicks) return null;
-  return { x: xTicks, y: yTicks };
+export interface AxisTicksConfig {
+  field: string;
+  type: 'quantitative' | 'ordinal' | 'nominal' | 'temporal';
+  bin?: boolean;
+  timeUnit?: string;
+  scaleDomain?: any[];
+  scaleZero?: boolean;
+  axisSize?: number;
+  tickCount?: number;
+  tickValues?: any[];
 }
 
-export function findNodeByRole(node: any, role: string, found: any[] = []): any[] {
-  if ('role' in node) {
-    if (node.role === role) {
-      found.push(node);
-    }
-    if (node.items) {
-      return node.items.reduce((acc: any[], n: any) => findNodeByRole(n, role, acc), found);
-    }
-    return found;
+const VL_DEFAULT_SIZE = 200;
+const PIXELS_PER_TICK = 40;
+
+export function computeAxisTicks(
+  data: Record<string, any>[],
+  channels: { x?: AxisTicksConfig; y?: AxisTicksConfig },
+): AxisTicks {
+  const result: AxisTicks = {};
+  for (const ch of ['x', 'y'] as const) {
+    const config = channels[ch];
+    if (!config) continue;
+    const ticks = computeTicksForChannel(data, config);
+    if (ticks !== undefined) result[ch] = ticks;
   }
-  if ('items' in node) {
-    return node.items.reduce((acc: any[], n: any) => findNodeByRole(n, role, acc), found);
+  return result;
+}
+
+function computeTicksForChannel(
+  data: Record<string, any>[],
+  config: AxisTicksConfig,
+): any[] | undefined {
+  if (config.tickValues) return config.tickValues;
+
+  const { field, type, bin, timeUnit, scaleDomain, scaleZero, axisSize, tickCount: explicitCount } = config;
+  const size = axisSize ?? VL_DEFAULT_SIZE;
+  const values = data.map((d) => d[field]).filter((v) => v != null);
+  if (values.length === 0) return undefined;
+
+  switch (type) {
+    case 'nominal':
+    case 'ordinal': {
+      const seen = new Set<any>();
+      const unique: any[] = [];
+      for (const v of values) {
+        if (!seen.has(v)) {
+          seen.add(v);
+          unique.push(v);
+        }
+      }
+      return unique;
+    }
+
+    case 'quantitative': {
+      if (bin) {
+        const starts = [...new Set(values.map(Number))].sort((a, b) => a - b);
+        const endField = field + '_end';
+        const ends = data.filter((d) => d[field] != null && d[endField] != null).map((d) => Number(d[endField]));
+        if (ends.length) {
+          const lastEnd = Math.max(...ends);
+          if (!starts.includes(lastEnd)) starts.push(lastEnd);
+        }
+        return starts;
+      }
+
+      const nums = values.map(Number).filter((n) => !isNaN(n));
+      if (nums.length === 0) return undefined;
+      const [dataMin, dataMax] = extent(nums) as [number, number];
+      let domMin = dataMin;
+      let domMax = dataMax;
+
+      if (scaleDomain) {
+        domMin = scaleDomain[0];
+        domMax = scaleDomain[1];
+      } else if (scaleZero !== false) {
+        domMin = Math.min(0, domMin);
+        domMax = Math.max(0, domMax);
+      }
+
+      const count = explicitCount ?? Math.ceil(size / PIXELS_PER_TICK);
+      return scaleLinear().domain([domMin, domMax]).nice(count).ticks(count);
+    }
+
+    case 'temporal': {
+      const dates = values.map((v) => (v instanceof Date ? v : new Date(v)));
+      const [minDate, maxDate] = extent(dates) as [Date, Date];
+
+      const domain = scaleDomain ? scaleDomain.map((v: any) => new Date(v)) : [minDate, maxDate];
+      const count = explicitCount ?? Math.ceil(size / PIXELS_PER_TICK);
+      return scaleUtc().domain(domain).nice(count).ticks(count);
+    }
+
+    default:
+      return undefined;
   }
-  return found;
 }

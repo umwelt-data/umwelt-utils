@@ -48,7 +48,13 @@
     "test:watch": "vitest",
     "prepublishOnly": "pnpm run typecheck && pnpm run test && pnpm run build"
   },
+  "dependencies": {
+    "d3-array": "^3.2.4",
+    "d3-scale": "^4.0.2"
+  },
   "devDependencies": {
+    "@types/d3-array": "^3.2.1",
+    "@types/d3-scale": "^4.0.8",
     "@types/node": "^20.11.0",
     "tsup": "^8.0.2",
     "typescript": "^5.4.0",
