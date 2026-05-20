@@ -33,6 +33,11 @@
       "types": "./dist/predicate/index.d.ts",
       "import": "./dist/predicate/index.js",
       "require": "./dist/predicate/index.cjs"
+    },
+    "./description": {
+      "types": "./dist/description/index.d.ts",
+      "import": "./dist/description/index.js",
+      "require": "./dist/description/index.cjs"
     }
   },
   "files": [
