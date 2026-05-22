@@ -73,7 +73,16 @@ function attachParam(spec: CompoundSpec): CompoundSpec {
   }
 
   const existing = Array.isArray(spec.params) ? spec.params : [];
-  const param = { name: EXTERNAL_STATE_PARAM, select: 'interval' };
+  const param = {
+    name: EXTERNAL_STATE_PARAM,
+    select: {
+      type: 'interval',
+      encodings: [] as string[],
+      translate: false,
+      zoom: false,
+      clear: false,
+    },
+  };
   return { ...spec, params: [...existing, param] };
 }
 

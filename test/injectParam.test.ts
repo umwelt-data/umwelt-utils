@@ -15,7 +15,16 @@ describe('withExternalStateParam', () => {
     };
     const out = withExternalStateParam(spec);
     const p = findExternalStateParam((out as { params?: unknown[] }).params);
-    expect(p).toEqual({ name: 'external_state', select: 'interval' });
+    expect(p).toEqual({
+      name: 'external_state',
+      select: {
+        type: 'interval',
+        encodings: [],
+        translate: false,
+        zoom: false,
+        clear: false,
+      },
+    });
   });
 
   it('preserves existing params', () => {
