@@ -1,7 +1,7 @@
 {
   "name": "@umwelt-data/umwelt-utils",
   "version": "0.1.0",
-  "description": "Shared utilities for the Olli and Umwelt projects. Includes a Vega-Lite bridge that syncs an Olli runtime with a VL view.",
+  "description": "Shared utilities for the Olli and Umwelt projects.",
   "license": "BSD-3-Clause",
   "repository": {
     "type": "git",

@@ -7,7 +7,7 @@ function findExternalStateParam(params: unknown[] | undefined): unknown {
 }
 
 describe('withExternalStateParam', () => {
-  it('adds an interval param to a unit spec', () => {
+  it('adds a point param with empty fields to a unit spec', () => {
     const spec = {
       data: { values: [{ a: 1 }] },
       mark: 'bar',
@@ -18,10 +18,9 @@ describe('withExternalStateParam', () => {
     expect(p).toEqual({
       name: 'external_state',
       select: {
-        type: 'interval',
-        encodings: [],
-        translate: false,
-        zoom: false,
+        type: 'point',
+        fields: [],
+        toggle: false,
         clear: false,
       },
     });

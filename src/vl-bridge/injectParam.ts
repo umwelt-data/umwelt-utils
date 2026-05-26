@@ -76,10 +76,9 @@ function attachParam(spec: CompoundSpec): CompoundSpec {
   const param = {
     name: EXTERNAL_STATE_PARAM,
     select: {
-      type: 'interval',
-      encodings: [] as string[],
-      translate: false,
-      zoom: false,
+      type: 'point' as const,
+      fields: [] as string[],
+      toggle: false,
       clear: false,
     },
   };
