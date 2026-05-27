@@ -1,12 +1,7 @@
 import { scaleLinear, scaleUtc } from 'd3-scale';
 import { extent } from 'd3-array';
 
-export interface AxisTicks {
-  x?: any[];
-  y?: any[];
-}
-
-export interface AxisTicksConfig {
+export interface GuideTicksConfig {
   field: string;
   type: 'quantitative' | 'ordinal' | 'nominal' | 'temporal';
   bin?: boolean;
@@ -21,23 +16,9 @@ export interface AxisTicksConfig {
 const VL_DEFAULT_SIZE = 200;
 const PIXELS_PER_TICK = 40;
 
-export function computeAxisTicks(
+export function computeGuideTicks(
   data: Record<string, any>[],
-  channels: { x?: AxisTicksConfig; y?: AxisTicksConfig },
-): AxisTicks {
-  const result: AxisTicks = {};
-  for (const ch of ['x', 'y'] as const) {
-    const config = channels[ch];
-    if (!config) continue;
-    const ticks = computeTicksForChannel(data, config);
-    if (ticks !== undefined) result[ch] = ticks;
-  }
-  return result;
-}
-
-function computeTicksForChannel(
-  data: Record<string, any>[],
-  config: AxisTicksConfig,
+  config: GuideTicksConfig,
 ): any[] | undefined {
   if (config.tickValues) return config.tickValues;
 
