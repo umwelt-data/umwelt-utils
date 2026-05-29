@@ -1,7 +1,7 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: ['src/vl-bridge/index.ts', 'src/bluefish-bridge/index.ts', 'src/data/index.ts', 'src/vega/index.ts', 'src/predicate/index.ts', 'src/description/index.ts'],
+  entry: ['src/vl-bridge/index.ts', 'src/bluefish-bridge/index.ts', 'src/data/index.ts', 'src/vega/index.ts', 'src/predicate/index.ts', 'src/description/index.ts', 'src/geo/index.ts'],
   format: ['esm', 'cjs'],
   dts: true,
   sourcemap: true,

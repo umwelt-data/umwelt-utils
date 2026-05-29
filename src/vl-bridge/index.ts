@@ -12,6 +12,10 @@ export {
   type VegaViewLike,
   type BridgeOptions,
 } from './bridge.js';
+export {
+  postprocessViewData,
+  type PostprocessViewLike,
+} from './postprocess.js';
 
 export {
   TUPLE_ENUM,

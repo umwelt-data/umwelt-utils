@@ -38,6 +38,11 @@
       "types": "./dist/description/index.d.ts",
       "import": "./dist/description/index.js",
       "require": "./dist/description/index.cjs"
+    },
+    "./geo": {
+      "types": "./dist/geo/index.d.ts",
+      "import": "./dist/geo/index.js",
+      "require": "./dist/geo/index.cjs"
     }
   },
   "files": [
