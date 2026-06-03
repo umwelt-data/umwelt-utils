@@ -34,8 +34,8 @@ describe('postprocessViewData', () => {
 
     await postprocessViewData(view);
 
-    expect(datasets.source_0[0]!['county_name']).toBe('Los Angeles');
-    expect(datasets.source_0[0]!['state_name']).toBe('California');
+    expect(datasets.source_0[0]!['county']).toBe('Los Angeles');
+    expect(datasets.source_0[0]!['state']).toBe('California');
     expect(datasets.source_0[1]!['region']).toBe('Midwest');
     expect(view.runCount).toBe(1);
   });
@@ -84,6 +84,6 @@ describe('postprocessViewData', () => {
     };
 
     await expect(postprocessViewData(view)).resolves.toBeUndefined();
-    expect(view._store.source_0[0]!['state_name']).toBe('California');
+    expect(view._store.source_0[0]!['state']).toBe('California');
   });
 });

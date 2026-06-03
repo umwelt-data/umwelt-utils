@@ -36,7 +36,7 @@ function stripVegaInternals(d: Record<string, unknown>): Record<string, unknown>
  * or got the view from vega-embed, with no vega/VL dependency in this package.
  *
  * Today it performs US-geo (FIPS) enrichment: any source dataset whose `id`
- * field looks like FIPS codes gains `county_name` / `state_name` / `region`
+ * field looks like FIPS codes gains `county` / `state` / `region`
  * columns, so VL selection predicates referencing those fields match rows on
  * the chart. Add further enrichment by editing the body — the signature stays
  * stable for downstream consumers.

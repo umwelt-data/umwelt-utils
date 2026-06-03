@@ -8,26 +8,26 @@ describe('enrichWithUSGeo', () => {
       { id: 17031, rate: 0.05 },
     ];
     const enriched = enrichWithUSGeo(data, 'id');
-    expect(enriched[0]!['county_name']).toBe('Los Angeles');
-    expect(enriched[0]!['state_name']).toBe('California');
+    expect(enriched[0]!['county']).toBe('Los Angeles');
+    expect(enriched[0]!['state']).toBe('California');
     expect(enriched[0]!['region']).toBe('West');
-    expect(enriched[1]!['county_name']).toBe('Cook');
-    expect(enriched[1]!['state_name']).toBe('Illinois');
+    expect(enriched[1]!['county']).toBe('Cook');
+    expect(enriched[1]!['state']).toBe('Illinois');
     expect(enriched[1]!['region']).toBe('Midwest');
   });
 
   it('handles string FIPS codes', () => {
     const data = [{ id: '01001', rate: 0.07 }];
     const enriched = enrichWithUSGeo(data, 'id');
-    expect(enriched[0]!['county_name']).toBe('Autauga');
-    expect(enriched[0]!['state_name']).toBe('Alabama');
+    expect(enriched[0]!['county']).toBe('Autauga');
+    expect(enriched[0]!['state']).toBe('Alabama');
     expect(enriched[0]!['region']).toBe('South');
   });
 
   it('gracefully handles unknown FIPS codes', () => {
     const data = [{ id: 99999, rate: 0.01 }];
     const enriched = enrichWithUSGeo(data, 'id');
-    expect(enriched[0]!['county_name']).toBeUndefined();
+    expect(enriched[0]!['county']).toBeUndefined();
     expect(enriched[0]!['rate']).toBe(0.01);
   });
 
@@ -36,6 +36,15 @@ describe('enrichWithUSGeo', () => {
     const enriched = enrichWithUSGeo(data, 'id');
     expect(enriched[0]!['rate']).toBe(0.1);
     expect(enriched[0]!['extra']).toBe('keep');
+  });
+
+  it('does not overwrite a pre-existing state/county column', () => {
+    const data = [{ id: 6037, state: 'CA', county: 'LA County' }];
+    const enriched = enrichWithUSGeo(data, 'id');
+    expect(enriched[0]!['state']).toBe('CA');
+    expect(enriched[0]!['county']).toBe('LA County');
+    // region was absent, so it is still filled
+    expect(enriched[0]!['region']).toBe('West');
   });
 });
 

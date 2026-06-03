@@ -13,11 +13,11 @@ export function enrichWithUSGeo(data: GeoDataset, idField: string): GeoDataset {
     if (id.length === 5) {
       const county = US_COUNTIES[id];
       if (county) {
-        out['county_name'] = county.name;
+        if (out['county'] == null) out['county'] = county.name;
         const state = US_STATES[county.stateFips];
         if (state) {
-          out['state_name'] = state.name;
-          out['region'] = state.region;
+          if (out['state'] == null) out['state'] = state.name;
+          if (out['region'] == null) out['region'] = state.region;
         }
         return out;
       }
@@ -26,8 +26,8 @@ export function enrichWithUSGeo(data: GeoDataset, idField: string): GeoDataset {
     const stateFips = id.length <= 2 ? id.padStart(2, '0') : id.slice(0, 2);
     const state = US_STATES[stateFips];
     if (state) {
-      out['state_name'] = state.name;
-      out['region'] = state.region;
+      if (out['state'] == null) out['state'] = state.name;
+      if (out['region'] == null) out['region'] = state.region;
     }
 
     return out;
