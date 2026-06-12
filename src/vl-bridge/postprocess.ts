@@ -1,4 +1,4 @@
-import { looksLikeFips, enrichWithUSGeo } from '../geo/index.js';
+import { looksLikeFips, enrichWithUSGeo, regionForUSState } from '../geo/index.js';
 
 // View surface we touch: getter + setter overloads of data() plus runAsync().
 // Declared structurally so the package keeps no runtime dependency on vega.
@@ -35,11 +35,12 @@ function stripVegaInternals(d: Record<string, unknown>): Record<string, unknown>
  * data registry, so this works whether the caller compiled the spec themselves
  * or got the view from vega-embed, with no vega/VL dependency in this package.
  *
- * Today it performs US-geo (FIPS) enrichment: any source dataset whose `id`
- * field looks like FIPS codes gains `county` / `state` / `region`
- * columns, so VL selection predicates referencing those fields match rows on
- * the chart. Add further enrichment by editing the body — the signature stays
- * stable for downstream consumers.
+ * Today it performs US-geo enrichment: any source dataset whose `id` field
+ * looks like FIPS codes gains `county` / `state` / `region` columns, and any
+ * source dataset that carries a US `state` column (abbreviation or full name)
+ * but no `region` gains the census region — so VL selection predicates
+ * referencing those fields match rows on the chart. Add further enrichment by
+ * editing the body — the signature stays stable for downstream consumers.
  */
 export async function postprocessViewData(view: PostprocessViewLike): Promise<void> {
   // `_runtime.data` is the canonical registry of every named dataset; it is
@@ -52,10 +53,24 @@ export async function postprocessViewData(view: PostprocessViewLike): Promise<vo
     if (!SOURCE_DATASET.test(name)) continue;
     try {
       const rows = view.data(name);
+      if (!rows?.length) continue;
       // --- geo enrichment (extend here later) ---
-      if (rows?.length && looksLikeFips(rows, 'id')) {
+      if (looksLikeFips(rows, 'id')) {
         view.data(name, enrichWithUSGeo(rows, 'id').map(stripVegaInternals));
         changed = true;
+      } else if (rows.some((r) => r['state'] != null) && !rows.some((r) => r['region'] != null)) {
+        let anyResolved = false;
+        const enriched = rows.map((d) => {
+          if (d['state'] == null) return d;
+          const region = regionForUSState(String(d['state']));
+          if (!region) return d;
+          anyResolved = true;
+          return { ...d, region };
+        });
+        if (anyResolved) {
+          view.data(name, enriched.map(stripVegaInternals));
+          changed = true;
+        }
       }
     } catch {
       /* dataset may not be queryable — skip it */

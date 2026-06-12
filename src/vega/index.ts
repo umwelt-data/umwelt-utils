@@ -11,10 +11,30 @@ export interface GuideTicksConfig {
   axisSize?: number;
   tickCount?: number;
   tickValues?: any[];
+  /**
+   * Ordering for nominal/ordinal ticks: 'ascending' | 'descending' sort the
+   * values, an array gives an explicit order, and anything else (including
+   * undefined, null, and field-based sort definitions) keeps data order.
+   */
+  sort?: 'ascending' | 'descending' | null | any[] | Record<string, unknown>;
 }
 
 const VL_DEFAULT_SIZE = 200;
 const PIXELS_PER_TICK = 40;
+
+function sortDiscreteValues(values: any[], sort: GuideTicksConfig['sort']): any[] {
+  if (Array.isArray(sort)) {
+    const order = new Map(sort.map((v, i) => [String(v), i]));
+    return [...values].sort((a, b) => (order.get(String(a)) ?? Infinity) - (order.get(String(b)) ?? Infinity));
+  }
+  if (sort !== 'ascending' && sort !== 'descending') return values;
+  const cmp = (a: any, b: any) => {
+    if (typeof a === 'string' && typeof b === 'string') return a.localeCompare(b);
+    return Number(a) - Number(b);
+  };
+  const sorted = [...values].sort(cmp);
+  return sort === 'descending' ? sorted.reverse() : sorted;
+}
 
 export function computeGuideTicks(
   data: Record<string, any>[],
@@ -38,7 +58,7 @@ export function computeGuideTicks(
           unique.push(v);
         }
       }
-      return unique;
+      return sortDiscreteValues(unique, config.sort);
     }
 
     case 'quantitative': {

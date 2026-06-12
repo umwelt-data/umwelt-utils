@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { enrichWithUSGeo, looksLikeFips } from '../src/geo/index.js';
+import { enrichWithUSGeo, looksLikeFips, regionForUSState } from '../src/geo/index.js';
 
 describe('enrichWithUSGeo', () => {
   it('adds county, state, and region for 5-digit FIPS', () => {
@@ -66,5 +66,22 @@ describe('looksLikeFips', () => {
 
   it('returns false for empty data', () => {
     expect(looksLikeFips([], 'id')).toBe(false);
+  });
+});
+
+describe('regionForUSState', () => {
+  it('resolves USPS abbreviations', () => {
+    expect(regionForUSState('NY')).toBe('Northeast');
+    expect(regionForUSState('ca')).toBe('West');
+  });
+
+  it('resolves full state names case-insensitively', () => {
+    expect(regionForUSState('Alabama')).toBe('South');
+    expect(regionForUSState('north dakota')).toBe('Midwest');
+  });
+
+  it('returns undefined for unknown values', () => {
+    expect(regionForUSState('Ontario')).toBeUndefined();
+    expect(regionForUSState('')).toBeUndefined();
   });
 });

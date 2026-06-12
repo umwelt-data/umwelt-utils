@@ -13,6 +13,17 @@ interface CompoundSpec {
   facet?: unknown;
 }
 
+export interface ExternalStateParamOptions {
+  /**
+   * Vega-lite's `normalize` function. Required to inject into specs that use
+   * composite marks (boxplot, errorbar, errorband): the param's signal cannot
+   * reach the compiler's internal composite expansion scopes, but after
+   * normalization the parts are ordinary layers. Passed in by the caller so
+   * this package does not depend on vega-lite.
+   */
+  normalize?: (spec: any) => any;
+}
+
 /**
  * Add an `external_state` interval selection param to a Vega-Lite spec,
  * and inject a conditional opacity encoding on every unit so the selected
@@ -32,16 +43,46 @@ interface CompoundSpec {
  * everything (Vega-Lite's `empty: true` default), so the root / "all data"
  * node of an Olli tree shows the chart undimmed.
  *
+ * Specs containing composite marks are normalized first via
+ * `options.normalize`; without it they are returned unchanged (no store is
+ * created, and the bridge then no-ops) rather than producing a spec that
+ * fails to parse. Note that highlight predicates match against the composite
+ * parts' aggregated datums: category selections highlight the matching
+ * boxes/bars, but raw-value range selections only match parts that carry the
+ * raw field (e.g. boxplot outlier points).
+ *
  * Idempotent — calling twice doesn't duplicate the param, and a unit
  * that already has a conditional opacity on `external_state` is left alone.
  *
  * The input is shallow-cloned on the path we mutate; the caller's spec
  * is not modified.
  */
-export function withExternalStateParam<T extends Record<string, unknown>>(spec: T): T {
-  const withParam = attachParam(spec as CompoundSpec);
+export function withExternalStateParam<T extends Record<string, unknown>>(
+  spec: T,
+  options: ExternalStateParamOptions = {},
+): T {
+  let input: CompoundSpec = spec as CompoundSpec;
+  if (containsCompositeMark(input)) {
+    if (!options.normalize) return spec;
+    input = options.normalize(input);
+  }
+  const withParam = attachParam(input);
   const withOpacity = attachConditionalOpacity(withParam);
   return augmentMarksForHighlight(withOpacity) as T;
+}
+
+const COMPOSITE_MARKS = ['boxplot', 'errorbar', 'errorband'];
+
+function containsCompositeMark(spec: CompoundSpec): boolean {
+  if (!spec || typeof spec !== 'object') return false;
+  const type = getMarkType(spec.mark);
+  if (type && COMPOSITE_MARKS.includes(type)) return true;
+  if (spec.spec && containsCompositeMark(spec.spec)) return true;
+  for (const key of ['layer', 'concat', 'hconcat', 'vconcat'] as const) {
+    const arr = spec[key];
+    if (Array.isArray(arr) && arr.some((s) => containsCompositeMark(s))) return true;
+  }
+  return false;
 }
 
 export function withPointMarks<T extends Record<string, unknown>>(spec: T): T {

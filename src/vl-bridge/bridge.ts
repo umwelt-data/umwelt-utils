@@ -76,11 +76,21 @@ export function connectOlliToVegaLite(
   const onError = options.onError ?? ((e: unknown) => console.error('[umwelt-utils vl-bridge]', e));
   const source = options.source ?? 'auto';
 
+  // when the spec was not injected (e.g. composite marks without a
+  // normalizer), the store doesn't exist on the view; disable after the
+  // first failed write instead of erroring on every focus change
+  let disabled = false;
   const push = (selection: Selection) => {
+    if (disabled) return;
     try {
       const tuple = predicateToSelectionStore(selection);
       view.data(storeName, tuple ? [tuple] : []).run();
     } catch (e) {
+      if (e instanceof Error && /unrecognized data set/i.test(e.message)) {
+        disabled = true;
+        onError(new Error(`bridge: data set "${storeName}" not found on the view; highlighting disabled`));
+        return;
+      }
       onError(e);
     }
   };

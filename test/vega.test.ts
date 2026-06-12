@@ -18,6 +18,40 @@ describe('computeGuideTicks', () => {
     expect(result).toEqual(['L', 'S', 'M']);
   });
 
+  it('ordinal: sort ascending sorts values', () => {
+    const data = [{ c: 'B' }, { c: 'A' }, { c: 'C' }];
+    const result = computeGuideTicks(data, {
+      field: 'c', type: 'ordinal', sort: 'ascending',
+    });
+    expect(result).toEqual(['A', 'B', 'C']);
+  });
+
+  it('ordinal: sort descending reverses sorted values', () => {
+    const data = [{ c: 'B' }, { c: 'A' }, { c: 'C' }];
+    const result = computeGuideTicks(data, {
+      field: 'c', type: 'ordinal', sort: 'descending',
+    });
+    expect(result).toEqual(['C', 'B', 'A']);
+  });
+
+  it('ordinal: sort array gives explicit order, unknown values last', () => {
+    const data = [{ c: 'B' }, { c: 'A' }, { c: 'C' }];
+    const result = computeGuideTicks(data, {
+      field: 'c', type: 'ordinal', sort: ['C', 'A'],
+    });
+    expect(result).toEqual(['C', 'A', 'B']);
+  });
+
+  it('ordinal: sort null and field-based sort defs keep data order', () => {
+    const data = [{ c: 'B' }, { c: 'A' }, { c: 'C' }];
+    for (const sort of [null, { field: 'other', op: 'sum' }] as const) {
+      const result = computeGuideTicks(data, {
+        field: 'c', type: 'ordinal', sort,
+      });
+      expect(result).toEqual(['B', 'A', 'C']);
+    }
+  });
+
   it('quantitative: includes zero by default', () => {
     const data = Array.from({ length: 20 }, (_, i) => ({ v: 10 + i * 5 }));
     const result = computeGuideTicks(data, {

@@ -1,6 +1,6 @@
 {
   "name": "@umwelt-data/umwelt-utils",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Shared utilities for the Olli and Umwelt projects.",
   "license": "BSD-3-Clause",
   "repository": {
@@ -60,7 +60,8 @@
   },
   "dependencies": {
     "d3-array": "^3.2.4",
-    "d3-scale": "^4.0.2"
+    "d3-scale": "^4.0.2",
+    "vega-expression": "^6.1.0"
   },
   "devDependencies": {
     "@types/d3-array": "^3.2.1",
@@ -68,6 +69,8 @@
     "@types/node": "^20.11.0",
     "tsup": "^8.0.2",
     "typescript": "^5.4.0",
+    "vega": "^6.2.0",
+    "vega-lite": "^6.4.3",
     "vitest": "^1.4.0"
   },
   "packageManager": "pnpm@9.0.0"

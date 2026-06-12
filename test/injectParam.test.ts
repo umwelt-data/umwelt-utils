@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { EXTERNAL_STATE_PARAM, withExternalStateParam, withPointMarks } from '../src/vl-bridge/index.js';
+import * as vega from 'vega';
+import * as vegaLite from 'vega-lite';
+import { EXTERNAL_STATE_PARAM, EXTERNAL_STATE_STORE, withExternalStateParam, withPointMarks } from '../src/vl-bridge/index.js';
 
 function findExternalStateParam(params: unknown[] | undefined): unknown {
   if (!Array.isArray(params)) return undefined;
@@ -287,5 +289,77 @@ describe('withPointMarks', () => {
     expect(out.layer).toHaveLength(2);
     expect(out.layer[0].mark).toBe('area');
     expect(out.layer[1].mark).toBe('circle');
+  });
+});
+
+describe('withExternalStateParam on composite marks', () => {
+  const boxplotSpec = () => ({
+    data: {
+      values: [
+        { Species: 'Adelie', mass: 3700 },
+        { Species: 'Adelie', mass: 3800 },
+        { Species: 'Adelie', mass: 9000 },
+        { Species: 'Gentoo', mass: 5000 },
+        { Species: 'Gentoo', mass: 5100 },
+      ],
+    },
+    mark: 'boxplot',
+    encoding: {
+      x: { field: 'Species', type: 'nominal' },
+      y: { field: 'mass', type: 'quantitative' },
+    },
+  });
+
+  it('returns the spec unchanged without a normalizer', () => {
+    const spec = boxplotSpec();
+    const out = withExternalStateParam(spec);
+    expect(out).toBe(spec);
+  });
+
+  it('detects composite marks nested in layers', () => {
+    const spec = { layer: [{ mark: 'point', encoding: {} }, boxplotSpec()] };
+    expect(withExternalStateParam(spec)).toBe(spec);
+  });
+
+  it('with a normalizer, the injected spec compiles and parses', async () => {
+    const injected = withExternalStateParam(boxplotSpec() as any, { normalize: vegaLite.normalize });
+    const compiled = vegaLite.compile(injected as any).spec;
+    expect((compiled.data ?? []).some((d: any) => d.name === EXTERNAL_STATE_STORE)).toBe(true);
+    expect(() => vega.parse(compiled)).not.toThrow();
+  });
+
+  it('with a normalizer, a category tuple dims the other categories at runtime', async () => {
+    const injected = withExternalStateParam(boxplotSpec() as any, { normalize: vegaLite.normalize });
+    const compiled = vegaLite.compile(injected as any).spec;
+    const view = new vega.View(vega.parse(compiled), { renderer: 'none' });
+    await view.runAsync();
+
+    const opacitiesBySpecies = () => {
+      const out = new Map<string, Set<number>>();
+      const walk = (item: any) => {
+        if (item?.items) item.items.forEach(walk);
+        const species = item?.datum?.Species;
+        if (item?.opacity !== undefined && species) {
+          if (!out.has(species)) out.set(species, new Set());
+          out.get(species)!.add(item.opacity);
+        }
+      };
+      walk(view.scenegraph().root);
+      return out;
+    };
+
+    // empty selection: nothing dimmed
+    let bySpecies = opacitiesBySpecies();
+    expect([...bySpecies.get('Adelie')!]).toEqual([1]);
+    expect([...bySpecies.get('Gentoo')!]).toEqual([1]);
+
+    view.data(EXTERNAL_STATE_STORE, [
+      { unit: '', fields: [{ type: 'E', field: 'Species' }], values: ['Adelie'] },
+    ]);
+    await view.runAsync();
+
+    bySpecies = opacitiesBySpecies();
+    expect([...bySpecies.get('Adelie')!]).toEqual([1]);
+    expect([...bySpecies.get('Gentoo')!]).toEqual([0.3]);
   });
 });

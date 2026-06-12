@@ -86,4 +86,46 @@ describe('postprocessViewData', () => {
     await expect(postprocessViewData(view)).resolves.toBeUndefined();
     expect(view._store.source_0[0]!['state']).toBe('California');
   });
+
+  it('derives region for source datasets with a US state column', async () => {
+    const datasets = {
+      source_0: [
+        { zip_code: 501, state: 'NY', city: 'Holtsville' },
+        { zip_code: 90001, state: 'CA', city: 'Los Angeles' },
+        { zip_code: 0, state: 'XX', city: 'Nowhere' },
+      ],
+    };
+    const view = makeFakeView(datasets);
+
+    await postprocessViewData(view);
+
+    expect(datasets.source_0[0]!['region']).toBe('Northeast');
+    expect(datasets.source_0[1]!['region']).toBe('West');
+    expect(datasets.source_0[2]!['region']).toBeUndefined();
+    expect(view.runCount).toBe(1);
+  });
+
+  it('leaves datasets that already have a region column untouched', async () => {
+    const datasets = {
+      source_0: [{ state: 'NY', region: 'Custom' }],
+    };
+    const view = makeFakeView(datasets);
+
+    await postprocessViewData(view);
+
+    expect(datasets.source_0[0]!['region']).toBe('Custom');
+    expect(view.runCount).toBe(0);
+  });
+
+  it('does not re-run when no state resolves to a region', async () => {
+    const datasets = {
+      source_0: [{ state: 'Ontario' }, { state: 'Quebec' }],
+    };
+    const view = makeFakeView(datasets);
+
+    await postprocessViewData(view);
+
+    expect(datasets.source_0[0]!['region']).toBeUndefined();
+    expect(view.runCount).toBe(0);
+  });
 });

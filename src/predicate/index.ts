@@ -26,3 +26,4 @@ export {
 export { selectionTest, testDatum } from './eval.js';
 export type { Datum } from './eval.js';
 export { predicateToFields } from './fields.js';
+export { filterExprToPredicates } from './fromExpr.js';
