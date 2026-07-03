@@ -104,3 +104,5 @@ export function computeGuideTicks(
       return undefined;
   }
 }
+
+export { evaluateVegaData, extractOutputDatasets, type VegaDataEntry } from './dataEval.js';
