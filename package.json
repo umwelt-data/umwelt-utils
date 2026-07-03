@@ -1,6 +1,6 @@
 {
   "name": "@umwelt-data/umwelt-utils",
-  "version": "0.1.5",
+  "version": "0.2.0",
   "description": "Shared utilities for the Olli and Umwelt projects.",
   "license": "BSD-3-Clause",
   "repository": {
