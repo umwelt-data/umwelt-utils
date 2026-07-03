@@ -116,6 +116,47 @@ describe('evaluateVegaData', () => {
     expect(total).toBe(3);
   });
 
+  it('bin ends agree with the next bin start exactly in floating point, like vega', () => {
+    // step 0.1 accumulates float error (0.7 + 0.1 !== 0.8000000000000001);
+    // vega computes bin1 from the bin params (vega/vega#830) so consecutive
+    // bins tile the axis exactly — mirror that so olli/umwelt bin boundaries
+    // match vega's rendered axis values
+    const entries = [
+      {
+        name: 'source_0',
+        values: [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7].map((x) => ({ x })),
+      },
+      {
+        name: 'data_0',
+        source: 'source_0',
+        transform: [
+          { type: 'extent', field: 'x', signal: 'bin_extent' },
+          {
+            type: 'bin',
+            field: 'x',
+            as: ['bin_x', 'bin_x_end'],
+            signal: 'bin_params',
+            extent: { signal: 'bin_extent' },
+            maxbins: 10,
+          },
+        ],
+      },
+    ];
+    const store = evaluateVegaData(entries);
+    const rows = [...store['data_0']!].sort((a, b) => (a.bin_x as number) - (b.bin_x as number));
+    const uniq = rows.filter((d, i) => i === 0 || d.bin_x !== rows[i - 1]!.bin_x);
+    expect(uniq.length).toBeGreaterThan(2);
+    for (let i = 0; i < uniq.length - 1; i++) {
+      // exact equality on purpose: these values are used as axis/bin
+      // boundaries and must be identical, not approximately equal
+      expect(uniq[i]!.bin_x_end).toBe(uniq[i + 1]!.bin_x);
+    }
+    // matches vega's output for this data: 0.7 lands in [0.6000000000000001, 0.7000000000000002]
+    const last = uniq[uniq.length - 1]!;
+    expect(last.bin_x).toBe(0.6000000000000001);
+    expect(last.bin_x_end).toBe(0.7000000000000002);
+  });
+
   it('applies formula transform', () => {
     const entries = [
       {

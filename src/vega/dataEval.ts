@@ -228,7 +228,10 @@ function applyBin(data: Dataset, t: any, signals: SignalStore): Dataset {
       if (binIdx < 0) binIdx = 0;
       const binStart = binParams.start + binIdx * binParams.step;
       out[asStart] = binStart;
-      out[asEnd] = binStart + binParams.step;
+      // vega derives the end from the bin params, not binStart + step, so a
+      // bin's end and the next bin's start agree exactly in floating point
+      // (vega/vega#830)
+      out[asEnd] = binParams.start + binParams.step * (1 + (binStart - binParams.start) / binParams.step);
     }
     return out;
   });
