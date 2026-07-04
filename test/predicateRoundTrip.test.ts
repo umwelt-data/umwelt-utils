@@ -81,6 +81,44 @@ describe('predicate <-> selection-store round-trip', () => {
     expect(roundTrip({ and: [] })).toEqual({ and: [] });
   });
 
+  it('normalizes a descending range from an inverted scale to ascending', () => {
+    // Vega stores an interval extent in the scale's own order, so a brush over
+    // an inverted (e.g. y) axis arrives as [max, min]. The predicate must come
+    // out ascending or every consumer tests `v >= max && v <= min` and matches
+    // nothing.
+    const store = [
+      {
+        unit: '',
+        fields: [{ type: 'R' as const, field: 'Horsepower' }],
+        values: [[184.5, 99.8]],
+      },
+    ];
+    expect(selectionStoreToSelection(store)).toEqual({
+      field: 'Horsepower',
+      range: [99.8, 184.5],
+      inclusiveLeft: true,
+      inclusiveRight: true,
+    });
+  });
+
+  it('swaps endpoint inclusivity when reversing an asymmetric range', () => {
+    // right-exclusive [true, false] over a descending extent becomes
+    // left-exclusive [false, true] once the bounds are put in ascending order
+    const store = [
+      {
+        unit: '',
+        fields: [{ type: 'R-RE' as const, field: 'y' }],
+        values: [[10, 0]],
+      },
+    ];
+    expect(selectionStoreToSelection(store)).toEqual({
+      field: 'y',
+      range: [0, 10],
+      inclusiveLeft: false,
+      inclusiveRight: true,
+    });
+  });
+
   it('undefined -> empty store -> empty AND', () => {
     expect(predicateToSelectionStore(undefined)).toBeUndefined();
     expect(selectionStoreToSelection(undefined)).toEqual({ and: [] });

@@ -2,5 +2,6 @@ export type { MeasureType, DataValue, Datum, Dataset, FieldSpec } from './types.
 export { isNumeric, typeCoerceData } from './coerce.js';
 export { typeInference } from './typeInference.js';
 export { getDomain, type DomainFieldDef } from './domain.js';
+export { getBins, type BinFieldDef } from './bins.js';
 export { serializeValue } from './serialize.js';
 export { inferFormatFromUrl, parseDelimited, parseCsv, parseTsv, fetchAndParse } from './parse.js';

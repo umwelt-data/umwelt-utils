@@ -16,6 +16,25 @@ import {
 } from './tupleTypes.js';
 import type { FieldPredicate, Selection } from '../predicate/types.js';
 
+// Vega stores an interval extent in the scale's own order, so a selection over
+// an inverted scale (e.g. a y axis, where higher data values sit at smaller
+// pixel coordinates) arrives descending: [max, min]. A range predicate is
+// [min, max] by contract, so normalize to ascending — swapping the endpoint
+// inclusivity along with the bounds — otherwise every consumer (predicate eval,
+// olli) tests `value >= max && value <= min` and matches nothing.
+function rangePredicate(base: { field: string }, value: unknown, leftInc: boolean, rightInc: boolean): FieldPredicate {
+  let [lo, hi] = value as [unknown, unknown];
+  let inclusiveLeft = leftInc;
+  let inclusiveRight = rightInc;
+  const nLo = lo instanceof Date ? lo.getTime() : lo;
+  const nHi = hi instanceof Date ? hi.getTime() : hi;
+  if (typeof nLo === 'number' && typeof nHi === 'number' && nLo > nHi) {
+    [lo, hi] = [hi, lo];
+    [inclusiveLeft, inclusiveRight] = [rightInc, leftInc];
+  }
+  return { ...base, range: [lo, hi], inclusiveLeft, inclusiveRight } as FieldPredicate;
+}
+
 function buildFieldPredicate(field: VlSelectionTupleField, value: unknown): FieldPredicate {
   const base = { field: field.field };
   switch (field.type as TupleType) {
@@ -30,13 +49,13 @@ function buildFieldPredicate(field: VlSelectionTupleField, value: unknown): Fiel
     case TUPLE_PRED_GTE:
       return { ...base, gte: value } as FieldPredicate;
     case TUPLE_RANGE_INC:
-      return { ...base, range: value, inclusiveLeft: true, inclusiveRight: true } as FieldPredicate;
+      return rangePredicate(base, value, true, true);
     case TUPLE_RANGE_RE:
-      return { ...base, range: value, inclusiveLeft: true, inclusiveRight: false } as FieldPredicate;
+      return rangePredicate(base, value, true, false);
     case TUPLE_RANGE_LE:
-      return { ...base, range: value, inclusiveLeft: false, inclusiveRight: true } as FieldPredicate;
+      return rangePredicate(base, value, false, true);
     case TUPLE_RANGE_EXC:
-      return { ...base, range: value, inclusiveLeft: false, inclusiveRight: false } as FieldPredicate;
+      return rangePredicate(base, value, false, false);
     case TUPLE_PRED_ONE_OF:
       return { ...base, oneOf: value } as FieldPredicate;
     case TUPLE_PRED_VALID:
