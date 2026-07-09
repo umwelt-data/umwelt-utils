@@ -5,7 +5,6 @@ export interface GuideTicksConfig {
   field: string;
   type: 'quantitative' | 'ordinal' | 'nominal' | 'temporal';
   bin?: boolean;
-  timeUnit?: string;
   scaleDomain?: any[];
   scaleZero?: boolean;
   axisSize?: number;
@@ -36,13 +35,25 @@ function sortDiscreteValues(values: any[], sort: GuideTicksConfig['sort']): any[
   return sort === 'descending' ? sorted.reverse() : sorted;
 }
 
+/**
+ * Ticks a rendered vega axis would show for `field`, computed headlessly.
+ *
+ * Contract: `data` must be the COMPILED/DERIVED table the chart's marks bind to
+ * — timeUnit-bucketed date columns already materialized, bin `_end` columns
+ * present — and `field` names the derived column (`month_date`,
+ * `bin_maxbins_10_x`, ...). This function never applies transforms itself: the
+ * config describes what shape the data is already in (`bin` only means "look
+ * for a `_end` column"), not work to do. Passing raw data with a raw field
+ * name yields ticks in the wrong space (e.g. ticks over raw multi-year dates
+ * for a month-timeUnit axis).
+ */
 export function computeGuideTicks(
   data: Record<string, any>[],
   config: GuideTicksConfig,
 ): any[] | undefined {
   if (config.tickValues) return config.tickValues;
 
-  const { field, type, bin, timeUnit, scaleDomain, scaleZero, axisSize, tickCount: explicitCount } = config;
+  const { field, type, bin, scaleDomain, scaleZero, axisSize, tickCount: explicitCount } = config;
   const size = axisSize ?? VL_DEFAULT_SIZE;
   const values = data.map((d) => d[field]).filter((v) => v != null);
   if (values.length === 0) return undefined;
